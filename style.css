@@ -1,0 +1,25 @@
+body {
+  font-family: sans-serif;
+  background: #f9f9f9;
+  padding: 40px;
+  text-align: center;
+}
+
+h1 {
+  color: #333;
+}
+
+ul#playlist {
+  list-style-type: none;
+  padding: 0;
+}
+
+ul#playlist li {
+  padding: 10px;
+  cursor: pointer;
+  color: #0066cc;
+}
+
+ul#playlist li:hover {
+  background-color: #eee;
+}
