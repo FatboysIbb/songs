@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <title>Fatboys Playlist</title>
   <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
   <h1>Fatboys Playlist</h1>
 
@@ -14,22 +16,56 @@
     <!-- Add more songs here -->
   </ul>
 
-  <audio id="audioPlayer" controls>
-    <source src="songs/wir_heben_die_glaeser_hoch.mp3" type="audio/mpeg">
-    Your browser does not support the audio element.
-  </audio>
+  <audio id="audioPlayer" controls></audio>
 
   <script>
     const audioPlayer = document.getElementById("audioPlayer");
     const playlist = document.getElementById("playlist");
+    const songs = Array.from(playlist.querySelectorAll("li"));
+    let currentSongIndex = 0;
 
-    playlist.addEventListener("click", function(e) {
-      if (e.target.tagName === "LI") {
-        const src = e.target.getAttribute("data-src");
+    function playSong(index) {
+      if (index >= 0 && index < songs.length) {
+        const songItem = songs[index];
+        const src = songItem.getAttribute("data-src");
+
+        // Update UI
+        songs.forEach(li => li.style.fontWeight = "normal");
+        songItem.style.fontWeight = "bold";
+
+        // Load and play the new song
+        audioPlayer.pause(); // stop current if any
         audioPlayer.src = src;
-        audioPlayer.play();
+        audioPlayer.load();
+        audioPlayer.play().catch(err => {
+          console.error("Playback failed:", err);
+        });
+
+        currentSongIndex = index;
+      }
+    }
+
+    // Play selected song when clicked
+    playlist.addEventListener("click", function (e) {
+      if (e.target.tagName === "LI") {
+        const index = songs.indexOf(e.target);
+        playSong(index);
       }
     });
+
+    // Play next song or loop to first
+    audioPlayer.addEventListener("ended", function () {
+      const nextIndex = (currentSongIndex + 1) % songs.length;
+      playSong(nextIndex);
+    });
+
+    // Optional: Highlight the first song on load, but don't auto-play
+    songs.forEach(li => li.style.fontWeight = "normal");
+    if (songs.length > 0) {
+      songs[0].style.fontWeight = "bold";
+      audioPlayer.src = songs[0].getAttribute("data-src");
+    }
   </script>
 </body>
+
 </html>

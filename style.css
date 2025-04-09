@@ -23,3 +23,44 @@ ul#playlist li {
 ul#playlist li:hover {
   background-color: #eee;
 }
+
+<audio id="audioPlayer" controls></audio><script>const audioPlayer=document.getElementById("audioPlayer");
+const playlist=document.getElementById("playlist");
+const songs=Array.from(playlist.querySelectorAll("li"));
+let currentSongIndex=0;
+
+function playSong(index) {
+  if (index >=0 && index < songs.length) {
+    const songItem=songs[index];
+    audioPlayer.src=songItem.getAttribute("data-src");
+    audioPlayer.load(); // ensure browser knows source has changed
+    audioPlayer.play(); // start playing
+    songs.forEach(li=> li.style.fontWeight="normal");
+    songItem.style.fontWeight="bold";
+    currentSongIndex=index;
+  }
+}
+
+playlist.addEventListener("click", function(e) {
+    if (e.target.tagName==="LI") {
+      const index=songs.indexOf(e.target);
+      playSong(index);
+    }
+  });
+
+audioPlayer.addEventListener("ended", function () {
+    const nextIndex=currentSongIndex + 1;
+
+    if (nextIndex < songs.length) {
+      playSong(nextIndex);
+    }
+
+    else {
+      playSong(0); // loop back to start
+    }
+  });
+
+// Start with first song highlighted but not autoplayed
+songs.forEach(li=> li.style.fontWeight="normal");
+songs[0].style.fontWeight="bold";
+</script>
