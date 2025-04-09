@@ -24,6 +24,72 @@ ul#playlist li:hover {
   background-color: #eee;
 }
 
+body {
+  font-family: sans-serif;
+  background: #f9f9f9;
+  padding: 20px;
+  margin: 0;
+  text-align: center;
+}
+
+h1 {
+  color: #333;
+  font-size: 1.5rem;
+}
+
+ul#playlist {
+  list-style-type: none;
+  padding: 0;
+  margin: 20px 0;
+}
+
+ul#playlist li {
+  padding: 12px;
+  margin: 6px 0;
+  cursor: pointer;
+  color: #0066cc;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  font-size: 1rem;
+  transition: background-color 0.2s;
+}
+
+ul#playlist li:hover {
+  background-color: #f0f0f0;
+}
+
+ul#playlist li:active {
+  background-color: #e0e0e0;
+}
+
+ul#playlist li.bold {
+  font-weight: bold;
+  background-color: #d0ebff;
+}
+
+audio {
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
+  display: block;
+}
+
+@media (max-width: 600px) {
+  body {
+    padding: 10px;
+  }
+
+  h1 {
+    font-size: 1.2rem;
+  }
+
+  ul#playlist li {
+    font-size: 0.95rem;
+    padding: 10px;
+  }
+}
+
 <audio id="audioPlayer" controls></audio><script>const audioPlayer=document.getElementById("audioPlayer");
 const playlist=document.getElementById("playlist");
 const songs=Array.from(playlist.querySelectorAll("li"));
