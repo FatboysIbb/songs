@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20260710d">
+  <link rel="stylesheet" href="style.css?v=20260710e">
 </head>
 
 <body>
@@ -61,9 +61,9 @@
       </div>
 
       <div class="briefing-strip">
-        <span><strong>3</strong> Missionen</span>
-        <span><strong>1</strong> Tausch</span>
-        <span><strong>72</strong> mögliche Aufträge</span>
+        <span><strong>3</strong> gleichzeitig</span>
+        <span><strong>+15</strong> im Nachschub</span>
+        <span><strong>108</strong> mögliche Aufträge</span>
       </div>
     </section>
 
@@ -139,10 +139,11 @@
           <h2 id="player-name">Agent</h2>
           <p id="player-schedule" class="muted"></p>
         </div>
-        <div class="score-orb"><strong id="completed-count">0</strong><span>/ 3</span></div>
+        <div class="score-orb"><strong id="completed-count">0</strong><span>erledigt</span></div>
       </div>
 
       <div id="schedule-banner" class="schedule-banner" hidden></div>
+      <p id="mission-flow-note" class="mission-flow-note"></p>
       <div id="mission-list" class="mission-list"></div>
 
       <div class="player-tools">
@@ -161,6 +162,7 @@
       </div>
 
       <div id="reveal-list" class="reveal-list"></div>
+      <p id="swap-penalty-summary" class="swap-penalty-summary"></p>
       <div class="final-score">
         <span>Bestätigte Punkte</span>
         <strong id="final-score">0</strong>
@@ -200,9 +202,9 @@
     </div>
   </template>
 
-  <script src="qrcode.js?v=20260710d"></script>
-  <script src="game-code.js?v=20260710d"></script>
-  <script src="app.js?v=20260710d"></script>
+  <script src="qrcode.js?v=20260710e"></script>
+  <script src="game-code.js?v=20260710e"></script>
+  <script src="app.js?v=20260710e"></script>
 </body>
 
 </html>

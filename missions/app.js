@@ -88,8 +88,8 @@ function writeStorage(key, value) {
   }
 }
 
-function playerStorageKey(gameId, playerId) {
-  return `${PLAYER_KEY_PREFIX}${gameId}:${playerId}`;
+function playerStorageKey(gameId, playerId, gameVersion = 1) {
+  return `${PLAYER_KEY_PREFIX}${gameId}:${playerId}:v${gameVersion}`;
 }
 
 function showToast(message) {
@@ -122,9 +122,17 @@ function gameBaseUrl() {
 }
 
 function makeInvitePayload(game, player) {
+  if (game.version >= 3 && !player.qrOnly) {
+    return {
+      version: 2,
+      game: { id: game.id, name: game.name, createdAt: game.createdAt, version: game.version },
+      player: { id: player.id, name: player.name, status: player.status }
+    };
+  }
+
   return {
     version: 1,
-    game: { id: game.id, name: game.name, createdAt: game.createdAt },
+    game: { id: game.id, name: game.name, createdAt: game.createdAt, version: game.version },
     player: { id: player.id, name: player.name, status: player.status },
     missions: player.missions
   };
@@ -172,26 +180,37 @@ function pickMissionOption(player, difficulty, activePlayers, usedMissionIds, ex
   throw new Error(`Keine passende ${difficulty}-Mission für ${player.name} gefunden.`);
 }
 
-function generateAssignments(player, activePlayers, usedMissionIds, random = secureRandom) {
-  const usedTargets = new Set();
+function generateMissionQueue(player, activePlayers, random = secureRandom, limit = 18) {
+  const usedMissionIds = new Set();
+  const queue = [];
+  let usedTargets = new Set();
+  const difficulties = ["easy", "medium", "legendary"];
 
-  return ["easy", "medium", "legendary"].map(difficulty => {
-    const primary = pickMissionOption(player, difficulty, activePlayers, usedMissionIds, usedTargets, random);
-    usedMissionIds.add(primary.mission.id);
-    if (primary.target) usedTargets.add(primary.target.id);
+  for (let index = 0; index < limit; index += 1) {
+    const difficulty = difficulties[index % difficulties.length];
+    if (index % difficulties.length === 0) usedTargets = new Set();
 
-    const alternate = pickMissionOption(player, difficulty, activePlayers, usedMissionIds, usedTargets, random);
-    usedMissionIds.add(alternate.mission.id);
+    let option;
+    try {
+      option = pickMissionOption(player, difficulty, activePlayers, usedMissionIds, usedTargets, random);
+    } catch {
+      try {
+        option = pickMissionOption(player, difficulty, activePlayers, usedMissionIds, new Set(), random);
+      } catch {
+        break;
+      }
+    }
 
-    return {
-      id: primary.mission.id,
-      targetId: primary.target?.id || null,
-      targetName: primary.target?.name || null,
-      alternateId: alternate.mission.id,
-      alternateTargetId: alternate.target?.id || null,
-      alternateTargetName: alternate.target?.name || null
-    };
-  });
+    usedMissionIds.add(option.mission.id);
+    if (option.target) usedTargets.add(option.target.id);
+    queue.push({
+      id: option.mission.id,
+      targetId: option.target?.id || null,
+      targetName: option.target?.name || null
+    });
+  }
+
+  return queue;
 }
 
 function createHostGame(name, roster, identity = null) {
@@ -199,14 +218,13 @@ function createHostGame(name, roster, identity = null) {
   const random = window.GameCodes.seededRandom(resolvedIdentity.packed);
   const players = roster.map((person, index) => ({ ...person, id: `agent-${index + 1}`, missions: [] }));
   const activePlayers = players.filter(player => player.status !== "absent");
-  const usedMissionIds = new Set();
 
   activePlayers.forEach(player => {
-    player.missions = generateAssignments(player, activePlayers, usedMissionIds, random);
+    player.missions = generateMissionQueue(player, activePlayers, random);
   });
 
   return {
-    version: 2,
+    version: 3,
     id: resolvedIdentity.code,
     code: resolvedIdentity.code,
     packed: resolvedIdentity.packed,
@@ -229,9 +247,15 @@ function addParticipantRow(name, index) {
   participantList.appendChild(row);
 }
 
-function prepareRosterForm() {
+function prepareRosterForm(existingRoster = []) {
   participantList.replaceChildren();
   ["Chef", "Hagen", "Nauber", "Mops", "Teeken", "Lage", "Pico", "Turtle", "Seppel"].forEach(addParticipantRow);
+  const rows = Array.from(participantList.querySelectorAll(".participant-row"));
+  rows.forEach(row => {
+    const name = row.querySelector(".participant-name").value;
+    const existing = existingRoster.find(person => person.name === name);
+    if (existing) row.querySelector(".participant-status").value = existing.status;
+  });
 }
 
 function collectRoster() {
@@ -300,7 +324,7 @@ function showQrForPlayer(playerId) {
 
   currentInviteUrl = inviteUrlFor(hostGame, player);
   document.getElementById("qr-player-name").textContent = player.name;
-  document.getElementById("qr-player-hint").textContent = player.status === "late" ? "Diesen QR-Code bis Samstag geheim halten." : player.status === "early" ? "Missionen gelten bis zur vorzeitigen Abreise." : "Drei private Missionen warten.";
+  document.getElementById("qr-player-hint").textContent = player.status === "late" ? "Diesen QR-Code bis Samstag geheim halten." : player.status === "early" ? "Missionen gelten bis zur vorzeitigen Abreise." : "Drei Missionen starten, Nachschub wartet.";
   qrCode.replaceChildren();
 
   if (typeof window.qrcode === "function") {
@@ -328,35 +352,58 @@ async function copyText(value, successMessage) {
 }
 
 function importInvite(payload, encodedPayload) {
-  if (payload.version !== 1 || !payload.game?.id || !payload.player?.id || !Array.isArray(payload.missions)) {
+  if (![1, 2].includes(payload.version) || !payload.game?.id || !payload.player?.id) {
     throw new Error("Dieser Missionscode ist ungültig.");
   }
 
+  if (payload.version === 2) {
+    const reconstructedGame = gameFromCode(payload.game.id);
+    const reconstructedPlayer = reconstructedGame.players.find(player => player.id === payload.player.id && player.status !== "absent");
+    if (!reconstructedPlayer) throw new Error("Diese Person ist in der Game ID nicht aktiv.");
+    payload = {
+      ...payload,
+      game: { ...payload.game },
+      player: { ...reconstructedPlayer, missions: undefined },
+      missions: reconstructedPlayer.missions
+    };
+  }
+
+  if (!Array.isArray(payload.missions) || payload.missions.length < 3) {
+    throw new Error("Für diese Person wurden nicht genug Missionen gefunden.");
+  }
+
   payload.missions.forEach(assignment => {
-    if (!missionById.has(assignment.id) || !missionById.has(assignment.alternateId)) {
+    if (!missionById.has(assignment.id) || (assignment.alternateId && !missionById.has(assignment.alternateId))) {
       throw new Error("Mindestens eine Mission ist in dieser Version nicht verfügbar.");
     }
   });
 
-  const storageKey = playerStorageKey(payload.game.id, payload.player.id);
+  const storageKey = playerStorageKey(payload.game.id, payload.player.id, payload.game.version);
   const existing = readStorage(storageKey);
 
+  const missionQueue = payload.missions.map(assignment => ({ ...assignment }));
   playerState = existing || {
     version: 1,
     game: payload.game,
     player: payload.player,
     encodedPayload,
-    missions: payload.missions.map(assignment => ({
+    missions: missionQueue.splice(0, 3).map(assignment => ({
       ...assignment,
       completed: false,
       accepted: false,
       stealth: false
     })),
-    rerollUsed: false,
+    queuedMissions: missionQueue,
+    swapCount: 0,
+    swapPenalty: 0,
     finished: false,
     leftEarly: false,
     startedAt: new Date().toISOString()
   };
+
+  playerState.queuedMissions ||= [];
+  playerState.swapCount ??= playerState.rerollUsed ? 1 : 0;
+  playerState.swapPenalty ??= 0;
 
   writeStorage(storageKey, playerState);
   writeStorage(CURRENT_PLAYER_KEY, { storageKey });
@@ -403,12 +450,34 @@ function loadCurrentPlayer() {
 
 function savePlayerState() {
   if (!playerState) return;
-  writeStorage(playerStorageKey(playerState.game.id, playerState.player.id), playerState);
+  const storageKey = playerStorageKey(playerState.game.id, playerState.player.id, playerState.game.version);
+  writeStorage(storageKey, playerState);
+  writeStorage(CURRENT_PLAYER_KEY, { storageKey });
 }
 
 function formattedMission(assignment) {
   const mission = missionById.get(assignment.id);
   return mission.text.replaceAll("{target}", assignment.targetName || "deine Zielperson");
+}
+
+function formatPoints(value) {
+  return Number(value).toLocaleString("de-DE", { maximumFractionDigits: 1 });
+}
+
+function nextSwapCost() {
+  return (playerState?.swapCount || 0) * 0.5;
+}
+
+function unlockNextMission() {
+  const next = playerState.queuedMissions?.shift();
+  if (!next) return false;
+  playerState.missions.push({
+    ...next,
+    completed: false,
+    accepted: false,
+    stealth: false
+  });
+  return true;
 }
 
 function renderPlayer() {
@@ -423,6 +492,11 @@ function renderPlayer() {
   document.getElementById("player-schedule").textContent = `${playerState.game.name} · ${displayCode}`;
   const completed = playerState.missions.filter(mission => mission.completed).length;
   document.getElementById("completed-count").textContent = completed;
+  const queueCount = playerState.queuedMissions?.length || 0;
+  const swapCost = nextSwapCost();
+  document.getElementById("mission-flow-note").textContent = queueCount
+    ? `${queueCount} weitere Missionen warten · Nächster Tausch: ${swapCost ? `${formatPoints(swapCost)} Punkte` : "gratis"}`
+    : `Keine weiteren Missionen in der Warteschlange · Nächster Tausch: ${swapCost ? `${formatPoints(swapCost)} Punkte` : "gratis"}`;
   missionList.replaceChildren();
 
   const banner = document.getElementById("schedule-banner");
@@ -439,7 +513,11 @@ function renderPlayer() {
     banner.innerHTML = "<strong>Volleinsatz:</strong> Du hast das ganze Wochenende Zeit. Auffälliges Dauergrinsen kann deine Tarnung gefährden.";
   }
 
-  playerState.missions.forEach((assignment, index) => {
+  const missionEntries = playerState.missions
+    .map((assignment, index) => ({ assignment, index }))
+    .sort((first, second) => Number(first.assignment.completed) - Number(second.assignment.completed));
+
+  missionEntries.forEach(({ assignment, index }) => {
     const mission = missionById.get(assignment.id);
     const difficulty = DIFFICULTY[mission.difficulty];
     const card = document.createElement("details");
@@ -477,13 +555,14 @@ function renderPlayer() {
     completeButton.textContent = assignment.completed ? "Doch nicht erledigt" : "Mission erledigt";
     actions.appendChild(completeButton);
 
-    if (!playerState.rerollUsed && !assignment.completed && assignment.alternateId) {
+    if (!assignment.completed && ((playerState.queuedMissions?.length || 0) > 0 || assignment.alternateId)) {
       const swapButton = document.createElement("button");
       swapButton.className = "swap-button";
       swapButton.type = "button";
       swapButton.dataset.action = "swap-mission";
       swapButton.dataset.index = index;
-      swapButton.textContent = "Einmalig tauschen";
+      const cost = nextSwapCost();
+      swapButton.textContent = cost ? `Tauschen · ${formatPoints(cost)} Punkte` : "Tauschen · gratis";
       actions.appendChild(swapButton);
     }
 
@@ -497,19 +576,32 @@ function renderPlayer() {
 
 function swapMission(index) {
   const assignment = playerState.missions[index];
-  if (!assignment || playerState.rerollUsed || !assignment.alternateId) return;
-  if (!window.confirm("Diese Mission wirklich tauschen? Du hast nur einen Tausch für das gesamte Wochenende.")) return;
+  if (!assignment || assignment.completed) return;
+  const replacement = playerState.queuedMissions?.shift() || (assignment.alternateId ? {
+    id: assignment.alternateId,
+    targetId: assignment.alternateTargetId,
+    targetName: assignment.alternateTargetName
+  } : null);
+  if (!replacement) return;
 
-  assignment.id = assignment.alternateId;
-  assignment.targetId = assignment.alternateTargetId;
-  assignment.targetName = assignment.alternateTargetName;
-  assignment.alternateId = null;
-  assignment.alternateTargetId = null;
-  assignment.alternateTargetName = null;
-  playerState.rerollUsed = true;
+  const cost = nextSwapCost();
+  const costText = cost ? ` Dieser Tausch kostet ${formatPoints(cost)} Punkte.` : " Dieser Tausch ist gratis.";
+  if (!window.confirm(`Diese Mission wirklich tauschen?${costText}`)) {
+    if (playerState.queuedMissions && !assignment.alternateId) playerState.queuedMissions.unshift(replacement);
+    return;
+  }
+
+  playerState.missions[index] = {
+    ...replacement,
+    completed: false,
+    accepted: false,
+    stealth: false
+  };
+  playerState.swapCount = (playerState.swapCount || 0) + 1;
+  playerState.swapPenalty = (playerState.swapPenalty || 0) + cost;
   savePlayerState();
   renderPlayer();
-  showToast("Neue Mission freigegeben.");
+  showToast(cost ? `Neue Mission, ${formatPoints(cost)} Punkte Abzug.` : "Neue Mission, erster Tausch gratis.");
 }
 
 function finishPlayer(leftEarly = false) {
@@ -527,11 +619,12 @@ function finishPlayer(leftEarly = false) {
 }
 
 function calculateScore() {
-  return playerState.missions.reduce((total, assignment) => {
+  const earned = playerState.missions.reduce((total, assignment) => {
     if (!assignment.completed || !assignment.accepted) return total;
     const points = missionById.get(assignment.id)?.points || 0;
     return total + points + (assignment.stealth ? 1 : 0);
   }, 0);
+  return earned - (playerState.swapPenalty || 0);
 }
 
 function renderReveal() {
@@ -577,7 +670,10 @@ function renderReveal() {
     list.appendChild(card);
   });
 
-  document.getElementById("final-score").textContent = calculateScore();
+  document.getElementById("swap-penalty-summary").textContent = playerState.swapPenalty
+    ? `Tauschkosten: −${formatPoints(playerState.swapPenalty)} Punkte`
+    : "Tauschkosten: 0 Punkte";
+  document.getElementById("final-score").textContent = formatPoints(calculateScore());
   showView(revealView);
 }
 
@@ -612,15 +708,6 @@ function showError(message) {
   showView(errorView);
 }
 
-function usedMissionIdsFromHost(game) {
-  const ids = new Set();
-  game.players.forEach(player => player.missions.forEach(mission => {
-    if (mission.id) ids.add(mission.id);
-    if (mission.alternateId) ids.add(mission.alternateId);
-  }));
-  return ids;
-}
-
 function addLatePlayer(name) {
   const normalized = name.trim();
   if (!normalized) return;
@@ -633,10 +720,11 @@ function addLatePlayer(name) {
   const player = absentMatch || { id: randomId(), name: normalized, missions: [] };
   player.status = "late";
   player.name = normalized;
+  player.qrOnly = true;
 
   if (!absentMatch) hostGame.players.push(player);
   const activePlayers = hostGame.players.filter(item => item.status !== "absent");
-  player.missions = generateAssignments(player, activePlayers, usedMissionIdsFromHost(hostGame));
+  player.missions = generateMissionQueue(player, activePlayers, secureRandom, 6);
   writeStorage(HOST_KEY, hostGame);
   renderHost();
   showQrForPlayer(player.id);
@@ -679,7 +767,18 @@ document.getElementById("new-game-button").addEventListener("click", () => {
 
 document.getElementById("resume-host-button").addEventListener("click", () => {
   hostGame = readStorage(HOST_KEY);
-  if (hostGame) renderHost();
+  if (!hostGame) return;
+  if ((hostGame.version || 1) < 3) {
+    if (!window.confirm("Dieses Spiel verwendet noch die alten Missionsregeln. Für Nachschub und die neuen Tauschkosten muss es einmal neu erstellt werden. Verfügbarkeit übernehmen und neu erstellen?")) return;
+    const oldGame = hostGame;
+    localStorage.removeItem(HOST_KEY);
+    hostGame = null;
+    prepareRosterForm(oldGame.players);
+    document.getElementById("game-name").value = oldGame.name || "Operation Grillzange";
+    showView(setupView);
+    return;
+  }
+  renderHost();
 });
 
 document.getElementById("resume-player-button").addEventListener("click", () => {
@@ -779,9 +878,13 @@ missionList.addEventListener("click", event => {
   if (!button) return;
   const index = Number(button.dataset.index);
   if (button.dataset.action === "toggle-complete") {
-    playerState.missions[index].completed = !playerState.missions[index].completed;
+    const assignment = playerState.missions[index];
+    const wasCompleted = assignment.completed;
+    assignment.completed = !assignment.completed;
+    const unlocked = !wasCompleted && assignment.completed && unlockNextMission();
     savePlayerState();
     renderPlayer();
+    if (unlocked) showToast("Mission erledigt, neue Mission freigeschaltet.");
   } else if (button.dataset.action === "swap-mission") {
     swapMission(index);
   }

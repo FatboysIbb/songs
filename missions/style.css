@@ -396,6 +396,8 @@ input::placeholder, textarea::placeholder { color: #65584f; }
 
 .schedule-banner { margin-bottom: 15px; padding: 13px 16px; border-radius: 13px; color: #dbcdbf; font-size: 0.78rem; line-height: 1.5; }
 .schedule-banner strong { color: var(--gold); }
+.mission-flow-note, .swap-penalty-summary { margin: 0 0 13px; color: var(--dim); font-size: 0.7rem; font-weight: 700; line-height: 1.5; }
+.swap-penalty-summary { margin: 18px 0 -9px; color: var(--muted); text-align: right; }
 
 .mission-list { display: grid; gap: 12px; }
 

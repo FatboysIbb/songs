@@ -303,24 +303,33 @@
     });
 
     const secretLogo = document.querySelector(".brand-mark img");
-    let secretTaps = 0;
-    let secretTapTimer;
+    const missionTrigger = document.getElementById("playlist-title");
+    let logoTaps = 0;
+    let logoTapTimer;
+    let missionTaps = 0;
+    let missionTapTimer;
     let secretKeys = "";
 
     secretLogo.addEventListener("click", () => {
-      window.clearTimeout(secretTapTimer);
-      secretTaps += 1;
-      secretTapTimer = window.setTimeout(() => { secretTaps = 0; }, 4000);
+      window.clearTimeout(logoTapTimer);
+      logoTaps += 1;
+      logoTapTimer = window.setTimeout(() => { logoTaps = 0; }, 2500);
 
-      if (secretTaps >= 5) {
-        window.location.href = "missions/?join=1&v=20260710d";
-      }
+      if (logoTaps >= 3) window.location.href = "random/";
+    });
+
+    missionTrigger.addEventListener("click", () => {
+      window.clearTimeout(missionTapTimer);
+      missionTaps += 1;
+      missionTapTimer = window.setTimeout(() => { missionTaps = 0; }, 4000);
+
+      if (missionTaps >= 5) window.location.href = "missions/?join=1&v=20260710e";
     });
 
     document.addEventListener("keydown", event => {
       if (event.target.matches("input, textarea")) return;
       secretKeys = `${secretKeys}${event.key.toLowerCase()}`.slice(-7);
-      if (secretKeys === "mission") window.location.href = "missions/?host=1&v=20260710d";
+      if (secretKeys === "mission") window.location.href = "missions/?host=1&v=20260710e";
     });
 
     loadSongs();
