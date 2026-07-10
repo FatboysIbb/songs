@@ -435,7 +435,8 @@ input::placeholder, textarea::placeholder { color: #65584f; }
 .complete-button { color: white; border: 1px solid rgba(105,184,124,0.32); background: rgba(105,184,124,0.1); }
 .is-completed .complete-button { color: #16251a; background: var(--green); }
 .swap-button { color: var(--muted); border: 1px solid var(--line); background: transparent; }
-.complete-button, .swap-button { min-height: 39px; padding: 0 12px; border-radius: 10px; font-weight: 800; }
+.impossible-swap-button { color: #ffd18b; border: 1px dashed rgba(248,189,45,0.3); background: rgba(248,189,45,0.04); }
+.complete-button, .swap-button, .impossible-swap-button { min-height: 39px; padding: 0 12px; border-radius: 10px; font-weight: 800; }
 
 .player-tools { justify-content: flex-start; margin-top: 20px; }
 .privacy-note { margin: 16px 0 0; color: var(--dim); font-size: 0.68rem; line-height: 1.5; }
@@ -459,6 +460,17 @@ input::placeholder, textarea::placeholder { color: #65584f; }
 .adjudication { display: grid; gap: 6px; align-content: start; }
 .adjudication button { min-width: 100px; min-height: 34px; border: 1px solid var(--line); border-radius: 9px; color: var(--muted); background: transparent; font-size: 0.68rem; font-weight: 800; }
 .adjudication button.is-on { color: #17241a; border-color: var(--green); background: var(--green); }
+
+.impossible-review { margin-top: 24px; padding: 20px; border: 1px dashed rgba(248,189,45,0.3); border-radius: 18px; background: rgba(248,189,45,0.04); }
+.impossible-review > h3 { font-size: 1.8rem; }
+.impossible-review > p:not(.eyebrow) { color: var(--muted); font-size: 0.76rem; line-height: 1.55; }
+.impossible-review-list { display: grid; gap: 10px; margin-top: 16px; }
+.impossible-review-card { padding: 14px; display: grid; grid-template-columns: 1fr auto; gap: 14px; align-items: center; border: 1px solid var(--line); border-radius: 13px; background: rgba(15,8,6,0.32); }
+.impossible-review-card h4 { margin: 0; color: var(--gold); font-size: 0.7rem; text-transform: uppercase; }
+.impossible-review-card p { margin: 5px 0; color: var(--ink); font-size: 0.8rem; line-height: 1.5; }
+.impossible-review-card blockquote { margin: 7px 0 0; color: var(--muted); font-size: 0.7rem; font-style: italic; }
+.impossible-review-card button { min-height: 38px; padding: 0 11px; border: 1px solid rgba(220,58,40,0.3); border-radius: 10px; color: #ffb7ae; background: rgba(220,58,40,0.08); font-size: 0.66rem; font-weight: 800; }
+.impossible-review-card button.is-on { color: #17241a; border-color: var(--green); background: var(--green); }
 
 .final-score {
   margin: 20px 0;
@@ -554,6 +566,7 @@ input::placeholder, textarea::placeholder { color: #65584f; }
   .mission-state { grid-column: 2; }
   .player-tools > button { flex: 1 1 45%; }
   .reveal-card { grid-template-columns: 1fr; }
+  .impossible-review-card { grid-template-columns: 1fr; }
   .adjudication { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .adjudication button { min-width: 0; }
 }

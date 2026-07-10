@@ -323,13 +323,13 @@
       missionTaps += 1;
       missionTapTimer = window.setTimeout(() => { missionTaps = 0; }, 4000);
 
-      if (missionTaps >= 5) window.location.href = "missions/?join=1&v=20260710e";
+      if (missionTaps >= 5) window.location.href = "missions/?join=1&v=20260710f";
     });
 
     document.addEventListener("keydown", event => {
       if (event.target.matches("input, textarea")) return;
       secretKeys = `${secretKeys}${event.key.toLowerCase()}`.slice(-7);
-      if (secretKeys === "mission") window.location.href = "missions/?host=1&v=20260710e";
+      if (secretKeys === "mission") window.location.href = "missions/?host=1&v=20260710f";
     });
 
     loadSongs();

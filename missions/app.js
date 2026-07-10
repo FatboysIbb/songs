@@ -404,6 +404,7 @@ function importInvite(payload, encodedPayload) {
   playerState.queuedMissions ||= [];
   playerState.swapCount ??= playerState.rerollUsed ? 1 : 0;
   playerState.swapPenalty ??= 0;
+  playerState.impossibleSwaps ||= [];
 
   writeStorage(storageKey, playerState);
   writeStorage(CURRENT_PLAYER_KEY, { storageKey });
@@ -504,9 +505,11 @@ function renderPlayer() {
   document.getElementById("completed-count").textContent = completed;
   const queueCount = playerState.queuedMissions?.length || 0;
   const swapCost = nextSwapCost();
+  const impossibleCount = playerState.impossibleSwaps?.length || 0;
+  const impossibleText = impossibleCount ? ` · ${impossibleCount} kostenlos als unmöglich gemeldet` : "";
   document.getElementById("mission-flow-note").textContent = queueCount
-    ? `${queueCount} weitere Missionen warten · Nächster Tausch: ${swapCost ? `${formatPoints(swapCost)} Punkte` : "gratis"}`
-    : `Keine weiteren Missionen in der Warteschlange · Nächster Tausch: ${swapCost ? `${formatPoints(swapCost)} Punkte` : "gratis"}`;
+    ? `${queueCount} weitere Missionen warten · Nächster Tausch: ${swapCost ? `${formatPoints(swapCost)} Punkte` : "gratis"}${impossibleText}`
+    : `Keine weiteren Missionen in der Warteschlange · Nächster Tausch: ${swapCost ? `${formatPoints(swapCost)} Punkte` : "gratis"}${impossibleText}`;
   missionList.replaceChildren();
 
   const banner = document.getElementById("schedule-banner");
@@ -574,6 +577,14 @@ function renderPlayer() {
       const cost = nextSwapCost();
       swapButton.textContent = cost ? `Tauschen · ${formatPoints(cost)} Punkte` : "Tauschen · gratis";
       actions.appendChild(swapButton);
+
+      const impossibleButton = document.createElement("button");
+      impossibleButton.className = "impossible-swap-button";
+      impossibleButton.type = "button";
+      impossibleButton.dataset.action = "swap-impossible";
+      impossibleButton.dataset.index = index;
+      impossibleButton.textContent = "Unmöglich · kostenlos";
+      actions.appendChild(impossibleButton);
     }
 
     body.append(text, actions);
@@ -616,6 +627,45 @@ function swapMission(index) {
   showToast(cost ? `Neue Mission, ${formatPoints(cost)} Punkte Abzug.` : "Neue Mission, erster Tausch gratis.");
 }
 
+function swapImpossibleMission(index) {
+  const assignment = playerState.missions[index];
+  if (!assignment || assignment.completed) return;
+  const queueIndex = queuedReplacementIndex(assignment);
+  if (queueIndex < 0 && !assignment.alternateId) return;
+
+  const reason = window.prompt("Warum ist diese Mission wirklich unmöglich? Die Begründung wird bei der Auswertung gezeigt.", "")?.trim();
+  if (!reason) {
+    showToast("Bitte eine kurze Begründung angeben.");
+    return;
+  }
+
+  const replacement = queueIndex >= 0 ? playerState.queuedMissions.splice(queueIndex, 1)[0] : {
+    id: assignment.alternateId,
+    targetId: assignment.alternateTargetId,
+    targetName: assignment.alternateTargetName
+  };
+
+  playerState.impossibleSwaps ||= [];
+  playerState.impossibleSwaps.push({
+    id: assignment.id,
+    targetId: assignment.targetId || null,
+    targetName: assignment.targetName || null,
+    reason,
+    avoidedCost: nextSwapCost(),
+    accepted: true,
+    replacedAt: new Date().toISOString()
+  });
+  playerState.missions[index] = {
+    ...replacement,
+    completed: false,
+    accepted: false,
+    stealth: false
+  };
+  savePlayerState();
+  renderPlayer();
+  showToast("Kostenlos ersetzt und für die Auswertung notiert.");
+}
+
 function finishPlayer(leftEarly = false) {
   const message = leftEarly ? "Einsatz jetzt beenden und zur Auswertung wechseln?" : "Missionen jetzt für die gemeinsame Auswertung freigeben?";
   if (!window.confirm(message)) return;
@@ -636,7 +686,43 @@ function calculateScore() {
     const points = missionById.get(assignment.id)?.points || 0;
     return total + points + (assignment.stealth ? 1 : 0);
   }, 0);
-  return earned - (playerState.swapPenalty || 0);
+  const rejectedImpossiblePenalty = (playerState.impossibleSwaps || []).reduce((total, report) => {
+    return total + (report.accepted ? 0 : report.avoidedCost || 0);
+  }, 0);
+  return earned - (playerState.swapPenalty || 0) - rejectedImpossiblePenalty;
+}
+
+function renderImpossibleReview() {
+  const reports = playerState.impossibleSwaps || [];
+  const section = document.getElementById("impossible-review");
+  const list = document.getElementById("impossible-review-list");
+  section.hidden = reports.length === 0;
+  list.replaceChildren();
+
+  reports.forEach((report, index) => {
+    const mission = missionById.get(report.id);
+    const card = document.createElement("article");
+    card.className = "impossible-review-card";
+    const info = document.createElement("div");
+    const title = document.createElement("h4");
+    title.textContent = `${DIFFICULTY[mission.difficulty].label}-Mission`;
+    const text = document.createElement("p");
+    text.textContent = formattedMission(report);
+    const reason = document.createElement("blockquote");
+    reason.textContent = `Begründung: ${report.reason}`;
+    info.append(title, text, reason);
+
+    const button = document.createElement("button");
+    button.type = "button";
+    button.dataset.action = "toggle-impossible-accepted";
+    button.dataset.index = index;
+    button.className = report.accepted ? "is-on" : "";
+    button.textContent = report.accepted
+      ? "Als unmöglich akzeptiert ✓"
+      : `Nicht anerkannt · −${formatPoints(report.avoidedCost || 0)} Punkte`;
+    card.append(info, button);
+    list.appendChild(card);
+  });
 }
 
 function renderReveal() {
@@ -682,9 +768,12 @@ function renderReveal() {
     list.appendChild(card);
   });
 
-  document.getElementById("swap-penalty-summary").textContent = playerState.swapPenalty
-    ? `Tauschkosten: −${formatPoints(playerState.swapPenalty)} Punkte`
-    : "Tauschkosten: 0 Punkte";
+  renderImpossibleReview();
+
+  const rejectedImpossiblePenalty = (playerState.impossibleSwaps || []).reduce((total, report) => total + (report.accepted ? 0 : report.avoidedCost || 0), 0);
+  const reportedCount = playerState.impossibleSwaps?.length || 0;
+  const paidSwapText = playerState.swapPenalty ? `−${formatPoints(playerState.swapPenalty)} Punkte` : "0 Punkte";
+  document.getElementById("swap-penalty-summary").textContent = `Tauschkosten: ${paidSwapText} · Unmöglich gemeldet: ${reportedCount}${rejectedImpossiblePenalty ? ` · Nachträglich abgezogen: −${formatPoints(rejectedImpossiblePenalty)} Punkte` : ""}`;
   document.getElementById("final-score").textContent = formatPoints(calculateScore());
   showView(revealView);
 }
@@ -899,6 +988,8 @@ missionList.addEventListener("click", event => {
     if (unlocked) showToast("Mission erledigt, neue Mission freigeschaltet.");
   } else if (button.dataset.action === "swap-mission") {
     swapMission(index);
+  } else if (button.dataset.action === "swap-impossible") {
+    swapImpossibleMission(index);
   }
 });
 
@@ -920,6 +1011,15 @@ document.getElementById("reveal-list").addEventListener("click", event => {
   } else if (button.dataset.action === "toggle-stealth" && assignment.accepted) {
     assignment.stealth = !assignment.stealth;
   }
+  savePlayerState();
+  renderReveal();
+});
+
+document.getElementById("impossible-review-list").addEventListener("click", event => {
+  const button = event.target.closest('button[data-action="toggle-impossible-accepted"]');
+  if (!button) return;
+  const report = playerState.impossibleSwaps[Number(button.dataset.index)];
+  report.accepted = !report.accepted;
   savePlayerState();
   renderReveal();
 });
