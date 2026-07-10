@@ -16,6 +16,7 @@ const DIFFICULTY = {
 };
 
 const views = Array.from(document.querySelectorAll(".view"));
+const joinView = document.getElementById("join-view");
 const landingView = document.getElementById("landing-view");
 const setupView = document.getElementById("setup-view");
 const hostView = document.getElementById("host-view");
@@ -30,12 +31,16 @@ const missionList = document.getElementById("mission-list");
 const qrDialog = document.getElementById("qr-dialog");
 const qrCode = document.getElementById("qr-code");
 const toast = document.getElementById("toast");
+const joinCodeForm = document.getElementById("join-code-form");
+const joinPlayerPanel = document.getElementById("join-player-panel");
+const joinPlayerList = document.getElementById("join-player-list");
 
 let missionCatalog = [];
 let missionById = new Map();
 let hostGame = null;
 let playerState = null;
 let currentInviteUrl = "";
+let joinCandidateGame = null;
 let toastTimer;
 
 function showView(view) {
@@ -49,11 +54,14 @@ function randomId() {
   return Array.from(bytes, byte => byte.toString(16).padStart(2, "0")).join("");
 }
 
-function shuffle(items) {
+function secureRandom() {
+  return crypto.getRandomValues(new Uint32Array(1))[0] / 2 ** 32;
+}
+
+function shuffle(items, random = secureRandom) {
   const result = [...items];
   for (let index = result.length - 1; index > 0; index -= 1) {
-    const random = crypto.getRandomValues(new Uint32Array(1))[0] / 2 ** 32;
-    const target = Math.floor(random * (index + 1));
+    const target = Math.floor(random() * (index + 1));
     [result[index], result[target]] = [result[target], result[index]];
   }
   return result;
@@ -149,30 +157,30 @@ function targetCandidates(mission, player, activePlayers, excludedTargets = new 
   });
 }
 
-function pickMissionOption(player, difficulty, activePlayers, usedMissionIds, excludedTargets) {
+function pickMissionOption(player, difficulty, activePlayers, usedMissionIds, excludedTargets, random = secureRandom) {
   const candidates = shuffle(missionCatalog.filter(mission => {
     if (mission.difficulty !== difficulty || usedMissionIds.has(mission.id)) return false;
     if (!missionAllowedForPlayer(mission, player)) return false;
     return targetCandidates(mission, player, activePlayers, excludedTargets).length > 0;
-  }));
+  }), random);
 
   for (const mission of candidates) {
-    const possibleTargets = shuffle(targetCandidates(mission, player, activePlayers, excludedTargets));
+    const possibleTargets = shuffle(targetCandidates(mission, player, activePlayers, excludedTargets), random);
     if (possibleTargets.length) return { mission, target: possibleTargets[0] };
   }
 
   throw new Error(`Keine passende ${difficulty}-Mission für ${player.name} gefunden.`);
 }
 
-function generateAssignments(player, activePlayers, usedMissionIds) {
+function generateAssignments(player, activePlayers, usedMissionIds, random = secureRandom) {
   const usedTargets = new Set();
 
   return ["easy", "medium", "legendary"].map(difficulty => {
-    const primary = pickMissionOption(player, difficulty, activePlayers, usedMissionIds, usedTargets);
+    const primary = pickMissionOption(player, difficulty, activePlayers, usedMissionIds, usedTargets, random);
     usedMissionIds.add(primary.mission.id);
     if (primary.target) usedTargets.add(primary.target.id);
 
-    const alternate = pickMissionOption(player, difficulty, activePlayers, usedMissionIds, usedTargets);
+    const alternate = pickMissionOption(player, difficulty, activePlayers, usedMissionIds, usedTargets, random);
     usedMissionIds.add(alternate.mission.id);
 
     return {
@@ -186,22 +194,31 @@ function generateAssignments(player, activePlayers, usedMissionIds) {
   });
 }
 
-function createHostGame(name, roster) {
-  const players = roster.map(person => ({ ...person, id: randomId(), missions: [] }));
+function createHostGame(name, roster, identity = null) {
+  const resolvedIdentity = identity || window.GameCodes.create(roster);
+  const random = window.GameCodes.seededRandom(resolvedIdentity.packed);
+  const players = roster.map((person, index) => ({ ...person, id: `agent-${index + 1}`, missions: [] }));
   const activePlayers = players.filter(player => player.status !== "absent");
   const usedMissionIds = new Set();
 
   activePlayers.forEach(player => {
-    player.missions = generateAssignments(player, activePlayers, usedMissionIds);
+    player.missions = generateAssignments(player, activePlayers, usedMissionIds, random);
   });
 
   return {
-    version: 1,
-    id: randomId(),
+    version: 2,
+    id: resolvedIdentity.code,
+    code: resolvedIdentity.code,
+    packed: resolvedIdentity.packed,
     name,
     createdAt: new Date().toISOString(),
     players
   };
+}
+
+function gameFromCode(code) {
+  const identity = window.GameCodes.decode(code);
+  return createHostGame("Operation Wochenende", identity.roster, identity);
 }
 
 function addParticipantRow(name, index) {
@@ -239,7 +256,10 @@ function renderHost() {
   document.getElementById("host-game-name").textContent = hostGame.name;
   const activeCount = hostGame.players.filter(player => player.status !== "absent").length;
   const lateCount = hostGame.players.filter(player => player.status === "late").length;
-  document.getElementById("host-game-meta").textContent = `${activeCount} aktive Agenten · ${lateCount} davon ab Samstag · Code ${hostGame.id.toUpperCase()}`;
+  document.getElementById("host-game-meta").textContent = `${activeCount} aktive Agenten · ${lateCount} davon ab Samstag`;
+  const codeCard = document.getElementById("game-code-card");
+  codeCard.hidden = !hostGame.code;
+  document.getElementById("host-game-code").textContent = hostGame.code?.replaceAll("-", " ") || "";
   hostPlayerList.replaceChildren();
 
   hostGame.players.forEach((player, index) => {
@@ -344,6 +364,37 @@ function importInvite(payload, encodedPayload) {
   renderPlayer();
 }
 
+function openPlayerFromGame(game, player) {
+  const payload = makeInvitePayload(game, player);
+  importInvite(payload, encodePayload(payload));
+}
+
+function availabilityLabel(status) {
+  return STATUS[status]?.label || "Teilnehmer";
+}
+
+function renderJoinPlayers(game) {
+  joinCandidateGame = game;
+  joinPlayerList.replaceChildren();
+
+  game.players.filter(player => player.status !== "absent").forEach(player => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "join-player-button";
+    button.dataset.playerId = player.id;
+
+    const name = document.createElement("strong");
+    name.textContent = player.name;
+    const detail = document.createElement("span");
+    detail.textContent = availabilityLabel(player.status);
+    button.append(name, detail);
+    joinPlayerList.appendChild(button);
+  });
+
+  joinPlayerPanel.hidden = false;
+  joinPlayerPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 function loadCurrentPlayer() {
   const pointer = readStorage(CURRENT_PLAYER_KEY);
   if (!pointer?.storageKey) return null;
@@ -368,7 +419,8 @@ function renderPlayer() {
   }
 
   document.getElementById("player-name").textContent = playerState.player.name;
-  document.getElementById("player-schedule").textContent = `${playerState.game.name} · Code ${playerState.game.id.toUpperCase()}`;
+  const displayCode = playerState.game.id.includes("-") ? playerState.game.id.replaceAll("-", " ") : playerState.game.id.toUpperCase();
+  document.getElementById("player-schedule").textContent = `${playerState.game.name} · ${displayCode}`;
   const completed = playerState.missions.filter(mission => mission.completed).length;
   document.getElementById("completed-count").textContent = completed;
   missionList.replaceChildren();
@@ -536,9 +588,23 @@ function updateLandingActions() {
   document.getElementById("resume-player-button").hidden = !savedPlayer;
 }
 
+function updateJoinActions() {
+  const savedPlayer = loadCurrentPlayer();
+  document.getElementById("resume-joined-player-button").hidden = !savedPlayer;
+}
+
+function isHostMode() {
+  return new URLSearchParams(window.location.search).has("host");
+}
+
 function goHome() {
-  updateLandingActions();
-  showView(landingView);
+  if (isHostMode()) {
+    updateLandingActions();
+    showView(landingView);
+  } else {
+    updateJoinActions();
+    showView(joinView);
+  }
 }
 
 function showError(message) {
@@ -603,8 +669,7 @@ async function initialize() {
 
   if (processJoinHash()) return;
 
-  updateLandingActions();
-  showView(landingView);
+  goHome();
 }
 
 document.getElementById("new-game-button").addEventListener("click", () => {
@@ -647,12 +712,38 @@ setupForm.addEventListener("submit", event => {
 
   try {
     const gameName = document.getElementById("game-name").value.trim() || "Operation Wochenende";
-    hostGame = createHostGame(gameName, roster);
+    const identity = window.GameCodes.create(roster);
+    hostGame = createHostGame(gameName, roster, identity);
     writeStorage(HOST_KEY, hostGame);
     renderHost();
   } catch (error) {
     showError(error.message);
   }
+});
+
+joinCodeForm.addEventListener("submit", event => {
+  event.preventDefault();
+  const input = document.getElementById("join-code");
+  try {
+    const game = gameFromCode(input.value);
+    input.value = game.code.replaceAll("-", " ");
+    renderJoinPlayers(game);
+  } catch (error) {
+    joinCandidateGame = null;
+    joinPlayerPanel.hidden = true;
+    showToast(error.message || "Diese Game ID ist ungültig.");
+  }
+});
+
+joinPlayerList.addEventListener("click", event => {
+  const button = event.target.closest("[data-player-id]");
+  const player = joinCandidateGame?.players.find(item => item.id === button?.dataset.playerId);
+  if (player) openPlayerFromGame(joinCandidateGame, player);
+});
+
+document.getElementById("resume-joined-player-button").addEventListener("click", () => {
+  playerState = loadCurrentPlayer();
+  if (playerState) renderPlayer();
 });
 
 hostPlayerList.addEventListener("click", event => {
@@ -679,6 +770,9 @@ qrDialog.addEventListener("click", event => {
   if (event.target === qrDialog) qrDialog.close();
 });
 document.getElementById("copy-invite-button").addEventListener("click", () => copyText(currentInviteUrl, "Einladungslink kopiert."));
+document.getElementById("copy-game-code-button").addEventListener("click", () => {
+  if (hostGame?.code) copyText(hostGame.code.replaceAll("-", " "), "Game ID kopiert.");
+});
 
 missionList.addEventListener("click", event => {
   const button = event.target.closest("button[data-action]");

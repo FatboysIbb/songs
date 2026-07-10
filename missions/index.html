@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20260710b">
+  <link rel="stylesheet" href="style.css?v=20260710d">
 </head>
 
 <body>
@@ -20,12 +20,34 @@
   <header class="topbar">
     <a class="mini-brand" href="../" aria-label="Zurück zur Fatboys Playlist">
       <img src="../img/logo.png" alt="">
-      <span>Fatboys<br><strong>Mission Control</strong></span>
+      <span>Fatboys<br><strong>Mission Possible</strong></span>
     </a>
     <button id="home-button" class="quiet-button" type="button">Start</button>
   </header>
 
   <main class="game-shell">
+    <section id="join-view" class="view join-view" hidden>
+      <div class="classified-stamp">Nur für Agenten</div>
+      <p class="eyebrow">Geheimer Zugang</p>
+      <h1>Mission<br><em>beitreten</em></h1>
+      <p class="lead">Gib die vier Wörter ein, die du vom Host bekommen hast. Danach wählst du deinen Namen.</p>
+
+      <form id="join-code-form" class="join-card">
+        <label for="join-code">Game ID</label>
+        <input id="join-code" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="wilder dachs klaut grillzange" required>
+        <button class="primary-button" type="submit">Game ID prüfen</button>
+      </form>
+
+      <div id="join-player-panel" class="join-player-panel" hidden>
+        <p class="eyebrow">Identität bestätigen</p>
+        <h2>Wer bist du?</h2>
+        <div id="join-player-list" class="join-player-list"></div>
+      </div>
+
+      <p class="join-hint">Alternativ kannst du deinen persönlichen QR-Code direkt mit der Handykamera scannen.</p>
+      <button id="resume-joined-player-button" class="quiet-button" type="button" hidden>Meine gespeicherten Missionen öffnen</button>
+    </section>
+
     <section id="landing-view" class="view landing-view">
       <div class="classified-stamp">Streng geheim</div>
       <p class="eyebrow">Operation Wochenende</p>
@@ -49,7 +71,7 @@
       <div class="section-intro">
         <p class="eyebrow">Host-Briefing</p>
         <h2>Wer ist wann dabei?</h2>
-        <p>Die neun Plätze sind für euren Plan vorbereitet: fünf bleiben, eine Person fährt früher, eine kommt Samstag und zwei sind diesmal raus.</p>
+        <p>Alle neun Namen sind vorbereitet. Wähle nur noch aus, wer wann dabei ist.</p>
       </div>
 
       <form id="setup-form" class="setup-card">
@@ -83,7 +105,16 @@
 
       <div class="host-instructions">
         <span class="step-number">1</span>
-        <p>Zeige jeder Person nur ihren eigenen QR-Code. Missionstexte bleiben auch für den Host verborgen.</p>
+        <p>Teile die Game ID oder zeige jeder Person ihren eigenen QR-Code. Missionstexte bleiben auch für den Host verborgen.</p>
+      </div>
+
+      <div id="game-code-card" class="game-code-card" hidden>
+        <div>
+          <p class="eyebrow">Game ID für alle</p>
+          <strong id="host-game-code"></strong>
+          <p>Die Teilnehmer geben diese vier Wörter ein und wählen anschließend ihren Namen.</p>
+        </div>
+        <button id="copy-game-code-button" class="secondary-button" type="button">Game ID kopieren</button>
       </div>
 
       <div id="host-player-list" class="host-player-list"></div>
@@ -96,7 +127,7 @@
             <input id="late-join-name" type="text" maxlength="30" autocomplete="off" placeholder="Späte Verstärkung">
             <button class="secondary-button" type="submit">QR erzeugen</button>
           </div>
-          <p>Die neue Person erhält ausschließlich Missionen für Samstag und danach.</p>
+          <p>Die neue Person erhält ausschließlich Missionen für Samstag und danach. Dieser nachträgliche Zugang funktioniert nur über den persönlichen QR-Code.</p>
         </form>
       </details>
     </section>
@@ -158,7 +189,7 @@
   <template id="participant-row-template">
     <div class="participant-row">
       <span class="participant-number"></span>
-      <input class="participant-name" type="text" maxlength="30" autocomplete="off" placeholder="Name">
+      <input class="participant-name" type="text" maxlength="30" autocomplete="off" placeholder="Name" readonly>
       <select class="participant-status">
         <option value="">Bitte auswählen</option>
         <option value="full">Ganzes Wochenende</option>
@@ -169,8 +200,9 @@
     </div>
   </template>
 
-  <script src="qrcode.js?v=20260710b"></script>
-  <script src="app.js?v=20260710b"></script>
+  <script src="qrcode.js?v=20260710d"></script>
+  <script src="game-code.js?v=20260710d"></script>
+  <script src="app.js?v=20260710d"></script>
 </body>
 
 </html>

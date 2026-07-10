@@ -96,6 +96,67 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   text-align: center;
 }
 
+.join-view {
+  position: relative;
+  max-width: 760px;
+  min-height: calc(100vh - 245px);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.join-view h1 { font-size: clamp(4.6rem, 13vw, 8rem); }
+
+.join-card {
+  width: min(620px, 100%);
+  padding: 18px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--panel);
+  box-shadow: 0 24px 60px rgba(0,0,0,0.28);
+  text-align: left;
+}
+
+.join-card label { grid-column: 1 / -1; }
+.join-card input { font-weight: 800; letter-spacing: 0.03em; }
+
+.join-player-panel {
+  width: min(620px, 100%);
+  margin-top: 22px;
+  padding: 22px;
+  border: 1px solid rgba(248,189,45,0.22);
+  border-radius: 18px;
+  background: rgba(248,189,45,0.045);
+  text-align: left;
+}
+
+.join-player-panel h2 { margin-bottom: 16px; font-size: clamp(2.4rem, 8vw, 4rem); }
+.join-player-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+
+.join-player-button {
+  min-height: 52px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: var(--ink);
+  background: rgba(255,255,255,0.025);
+  font-weight: 800;
+}
+
+.join-player-button:hover { border-color: rgba(248,189,45,0.35); background: rgba(248,189,45,0.08); }
+.join-player-button span { color: var(--dim); font-size: 0.65rem; font-weight: 700; }
+.join-hint { max-width: 550px; margin: 17px 0 13px; color: var(--dim); font-size: 0.72rem; line-height: 1.5; }
+
 .classified-stamp {
   position: absolute;
   top: 4%;
@@ -265,6 +326,22 @@ input::placeholder, textarea::placeholder { color: #65584f; }
   padding: 14px 17px;
   border-radius: 14px;
 }
+
+.game-code-card {
+  margin-bottom: 18px;
+  padding: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  border: 1px solid rgba(248,189,45,0.28);
+  border-radius: 17px;
+  background: linear-gradient(120deg, rgba(248,189,45,0.1), rgba(220,58,40,0.06));
+}
+
+.game-code-card .eyebrow { margin-bottom: 5px; }
+.game-code-card strong { display: block; color: var(--gold); font: 400 clamp(1.5rem, 4vw, 2.3rem) var(--display); letter-spacing: 0.03em; text-transform: uppercase; }
+.game-code-card p:last-child { margin: 5px 0 0; color: var(--muted); font-size: 0.72rem; }
 
 .host-instructions p { margin: 0; color: var(--muted); font-size: 0.83rem; line-height: 1.5; }
 .step-number { display: grid; width: 30px; height: 30px; flex: 0 0 30px; place-items: center; border-radius: 50%; color: #26130d; background: var(--gold); font-weight: 800; }
@@ -456,8 +533,14 @@ input::placeholder, textarea::placeholder { color: #65584f; }
   .mini-brand img { width: 40px; height: 40px; }
   .game-shell { width: min(100% - 24px, 1000px); padding-bottom: 70px; }
   .landing-view { min-height: calc(100vh - 180px); }
+  .join-view { min-height: calc(100vh - 150px); }
   h1 { font-size: clamp(5rem, 25vw, 7rem); }
+  .join-view h1 { font-size: clamp(4.2rem, 22vw, 6rem); }
   .lead { font-size: 0.94rem; }
+  .join-card { grid-template-columns: 1fr; }
+  .join-card label { grid-column: auto; }
+  .join-player-list { grid-template-columns: 1fr; }
+  .game-code-card { align-items: flex-start; flex-direction: column; }
   .landing-actions > button { width: 100%; }
   .setup-card { padding: 18px 14px; }
   .host-header, .agent-header { align-items: center; }
