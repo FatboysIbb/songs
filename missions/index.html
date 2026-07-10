@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#110a08">
+  <meta name="description" content="Eine streng geheime Fatboys-Wochenendmission.">
+  <title>Mission Possible · Fatboys</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <div class="noise" aria-hidden="true"></div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <header class="topbar">
+    <a class="mini-brand" href="../" aria-label="Zurück zur Fatboys Playlist">
+      <img src="../img/logo.png" alt="">
+      <span>Fatboys<br><strong>Mission Control</strong></span>
+    </a>
+    <button id="home-button" class="quiet-button" type="button">Start</button>
+  </header>
+
+  <main class="game-shell">
+    <section id="landing-view" class="view landing-view">
+      <div class="classified-stamp">Streng geheim</div>
+      <p class="eyebrow">Operation Wochenende</p>
+      <h1>Mission<br><em>Possible</em></h1>
+      <p class="lead">Drei geheime Aufträge. Ein Wochenende. Null Ausreden. Alles bleibt auf euren Handys.</p>
+
+      <div class="landing-actions">
+        <button id="new-game-button" class="primary-button" type="button">Neues Spiel vorbereiten</button>
+        <button id="resume-host-button" class="secondary-button" type="button" hidden>Host-Spiel fortsetzen</button>
+        <button id="resume-player-button" class="secondary-button" type="button" hidden>Meine Missionen öffnen</button>
+      </div>
+
+      <div class="briefing-strip">
+        <span><strong>3</strong> Missionen</span>
+        <span><strong>1</strong> Tausch</span>
+        <span><strong>0</strong> Datenbanken</span>
+      </div>
+    </section>
+
+    <section id="setup-view" class="view" hidden>
+      <div class="section-intro">
+        <p class="eyebrow">Host-Briefing</p>
+        <h2>Wer ist wann dabei?</h2>
+        <p>Die neun Plätze sind für euren Plan vorbereitet: fünf bleiben, eine Person fährt früher, eine kommt Samstag und zwei sind diesmal raus.</p>
+      </div>
+
+      <form id="setup-form" class="setup-card">
+        <div class="field-row game-name-row">
+          <label for="game-name">Codename des Wochenendes</label>
+          <input id="game-name" name="gameName" type="text" value="Operation Grillzange" maxlength="40" autocomplete="off">
+        </div>
+
+        <div class="roster-heading">
+          <span>Person</span>
+          <span>Verfügbarkeit</span>
+        </div>
+        <div id="participant-list" class="participant-list"></div>
+
+        <div class="setup-note">
+          <strong>Sicherheitsbriefing:</strong> Keine Mission darf den Fahrer ablenken, jemanden zum Trinken drängen, beim Schwimmen stören oder jemanden bloßstellen.
+        </div>
+
+        <div class="form-actions">
+          <button class="quiet-button" type="button" data-action="cancel-setup">Abbrechen</button>
+          <button class="primary-button" type="submit">Missionen verteilen</button>
+        </div>
+      </form>
+    </section>
+
+    <section id="host-view" class="view" hidden>
+      <div class="host-header">
+        <div>
+          <p class="eyebrow">Mission Control</p>
+          <h2 id="host-game-name">Operation Grillzange</h2>
+          <p id="host-game-meta" class="muted"></p>
+        </div>
+        <button id="reset-game-button" class="danger-button" type="button">Spiel löschen</button>
+      </div>
+
+      <div class="host-instructions">
+        <span class="step-number">1</span>
+        <p>Zeige jeder Person nur ihren eigenen QR-Code. Missionstexte bleiben auch für den Host verborgen.</p>
+      </div>
+
+      <div id="host-player-list" class="host-player-list"></div>
+
+      <details class="late-join-panel">
+        <summary>Samstags noch jemanden hinzufügen</summary>
+        <form id="late-join-form">
+          <label for="late-join-name">Name</label>
+          <div class="inline-form">
+            <input id="late-join-name" type="text" maxlength="30" autocomplete="off" placeholder="Späte Verstärkung">
+            <button class="secondary-button" type="submit">QR erzeugen</button>
+          </div>
+          <p>Die neue Person erhält ausschließlich Missionen für Samstag und danach.</p>
+        </form>
+      </details>
+    </section>
+
+    <section id="player-view" class="view" hidden>
+      <div class="agent-header">
+        <div>
+          <p class="eyebrow">Geheimakte</p>
+          <h2 id="player-name">Agent</h2>
+          <p id="player-schedule" class="muted"></p>
+        </div>
+        <div class="score-orb"><strong id="completed-count">0</strong><span>/ 3</span></div>
+      </div>
+
+      <div id="schedule-banner" class="schedule-banner" hidden></div>
+      <div id="mission-list" class="mission-list"></div>
+
+      <div class="player-tools">
+        <button id="copy-backup-button" class="quiet-button" type="button">Backup-Link kopieren</button>
+        <button id="finish-button" class="secondary-button" type="button">Wochenende auswerten</button>
+        <button id="leave-early-button" class="danger-button" type="button" hidden>Spiel vor Abreise beenden</button>
+      </div>
+      <p class="privacy-note">Dein Fortschritt wird nur in diesem Browser gespeichert. Lösche bis zur Auswertung keine Website-Daten.</p>
+    </section>
+
+    <section id="reveal-view" class="view" hidden>
+      <div class="reveal-header">
+        <p class="eyebrow">Aktenfreigabe</p>
+        <h2><span id="reveal-player-name"></span>, Bericht!</h2>
+        <p>Missionen vorlesen, Geschichte erzählen und gemeinsam entscheiden, was zählt.</p>
+      </div>
+
+      <div id="reveal-list" class="reveal-list"></div>
+      <div class="final-score">
+        <span>Bestätigte Punkte</span>
+        <strong id="final-score">0</strong>
+      </div>
+      <button id="reopen-missions-button" class="quiet-button" type="button">Missionen wieder öffnen</button>
+    </section>
+
+    <section id="error-view" class="view error-view" hidden>
+      <p class="eyebrow">Verbindung abgebrochen</p>
+      <h2>Mission nicht verfügbar</h2>
+      <p id="error-message"></p>
+      <button class="secondary-button" type="button" data-action="go-home">Zurück zum Start</button>
+    </section>
+  </main>
+
+  <dialog id="qr-dialog" class="qr-dialog">
+    <button class="dialog-close" type="button" aria-label="Schließen">×</button>
+    <p class="eyebrow">Nur für</p>
+    <h2 id="qr-player-name">Agent</h2>
+    <p id="qr-player-hint" class="muted"></p>
+    <div id="qr-code" class="qr-code"></div>
+    <p class="scan-note">Mit der normalen Handykamera scannen. Der Inhalt bleibt anschließend lokal auf diesem Handy.</p>
+    <button id="copy-invite-button" class="secondary-button" type="button">Link kopieren</button>
+  </dialog>
+
+  <template id="participant-row-template">
+    <div class="participant-row">
+      <span class="participant-number"></span>
+      <input class="participant-name" type="text" maxlength="30" autocomplete="off" placeholder="Name">
+      <select class="participant-status">
+        <option value="full">Ganzes Wochenende</option>
+        <option value="early">Freitag dabei, fährt früher</option>
+        <option value="late">Kommt Samstag dazu</option>
+        <option value="absent">Diesmal nicht dabei</option>
+      </select>
+    </div>
+  </template>
+
+  <script src="qrcode.js"></script>
+  <script src="app.js"></script>
+</body>
+
+</html>
