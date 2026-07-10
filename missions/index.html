@@ -30,7 +30,7 @@
       <div class="classified-stamp">Streng geheim</div>
       <p class="eyebrow">Operation Wochenende</p>
       <h1>Mission<br><em>Possible</em></h1>
-      <p class="lead">Drei geheime Aufträge. Ein Wochenende. Null Ausreden. Alles bleibt auf euren Handys.</p>
+      <p class="lead">Drei geheime Aufträge. Ein Wochenende. Null Ausreden. Maximale Tarnung.</p>
 
       <div class="landing-actions">
         <button id="new-game-button" class="primary-button" type="button">Neues Spiel vorbereiten</button>
@@ -41,7 +41,7 @@
       <div class="briefing-strip">
         <span><strong>3</strong> Missionen</span>
         <span><strong>1</strong> Tausch</span>
-        <span><strong>0</strong> Datenbanken</span>
+        <span><strong>72</strong> mögliche Aufträge</span>
       </div>
     </section>
 
@@ -123,7 +123,7 @@
         <button id="finish-button" class="secondary-button" type="button">Wochenende auswerten</button>
         <button id="leave-early-button" class="danger-button" type="button" hidden>Spiel vor Abreise beenden</button>
       </div>
-      <p class="privacy-note">Dein Fortschritt wird nur in diesem Browser gespeichert. Lösche bis zur Auswertung keine Website-Daten.</p>
+      <p class="privacy-note">Bewahre deinen Backup-Link sicher auf und benutze bis zur Auswertung dasselbe Handy.</p>
     </section>
 
     <section id="reveal-view" class="view" hidden>
@@ -155,7 +155,7 @@
     <h2 id="qr-player-name">Agent</h2>
     <p id="qr-player-hint" class="muted"></p>
     <div id="qr-code" class="qr-code"></div>
-    <p class="scan-note">Mit der normalen Handykamera scannen. Der Inhalt bleibt anschließend lokal auf diesem Handy.</p>
+    <p class="scan-note">Mit der normalen Handykamera scannen. Nur die richtige Person darf anschließend mitlesen.</p>
     <button id="copy-invite-button" class="secondary-button" type="button">Link kopieren</button>
   </dialog>
 
@@ -164,6 +164,7 @@
       <span class="participant-number"></span>
       <input class="participant-name" type="text" maxlength="30" autocomplete="off" placeholder="Name">
       <select class="participant-status">
+        <option value="">Bitte auswählen</option>
         <option value="full">Ganzes Wochenende</option>
         <option value="early">Freitag dabei, fährt früher</option>
         <option value="late">Kommt Samstag dazu</option>

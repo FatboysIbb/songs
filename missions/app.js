@@ -204,16 +204,17 @@ function createHostGame(name, roster) {
   };
 }
 
-function addParticipantRow(status, index) {
+function addParticipantRow(name, index) {
   const row = participantTemplate.content.firstElementChild.cloneNode(true);
   row.querySelector(".participant-number").textContent = String(index + 1).padStart(2, "0");
-  row.querySelector(".participant-status").value = status;
+  row.querySelector(".participant-name").value = name;
+  row.querySelector(".participant-status").value = "";
   participantList.appendChild(row);
 }
 
 function prepareRosterForm() {
   participantList.replaceChildren();
-  ["full", "full", "full", "full", "full", "early", "late", "absent", "absent"].forEach(addParticipantRow);
+  ["Chef", "Hagen", "Nauber", "Mops", "Teeken", "Lage", "Pico", "Turtle", "Seppel"].forEach(addParticipantRow);
 }
 
 function collectRoster() {
@@ -253,7 +254,7 @@ function renderHost() {
     const title = document.createElement("h3");
     title.textContent = player.name;
     const detail = document.createElement("p");
-    detail.textContent = player.status === "late" ? "QR erst bei der Ankunft zeigen" : player.status === "early" ? "Kann lokal vorzeitig abschließen" : player.status === "absent" ? "Kein QR und keine Missionen" : "Privater QR-Code bereit";
+    detail.textContent = player.status === "late" ? "QR erst bei der Ankunft zeigen" : player.status === "early" ? "Beendet den Einsatz vor der Abfahrt" : player.status === "absent" ? "Kein QR und keine Missionen" : "Privater QR-Code bereit";
     info.append(title, detail, statusPill(player.status));
 
     card.append(number, info);
@@ -627,9 +628,14 @@ document.querySelectorAll('[data-action="go-home"], [data-action="cancel-setup"]
 setupForm.addEventListener("submit", event => {
   event.preventDefault();
   const roster = collectRoster();
+  const missingAttendance = roster.some(person => !person.status);
   const activePlayers = roster.filter(person => person.status !== "absent");
   const normalizedNames = roster.map(person => person.name.toLowerCase());
 
+  if (missingAttendance) {
+    showToast("Bitte für jede Person die Verfügbarkeit auswählen.");
+    return;
+  }
   if (activePlayers.length < 3) {
     showToast("Mindestens drei aktive Personen eintragen.");
     return;
@@ -662,7 +668,7 @@ document.getElementById("late-join-form").addEventListener("submit", event => {
 });
 
 document.getElementById("reset-game-button").addEventListener("click", () => {
-  if (!window.confirm("Host-Spiel und alle QR-Zuordnungen auf diesem Gerät löschen? Die Spielstände auf anderen Handys bleiben erhalten.")) return;
+  if (!window.confirm("Host-Spiel und alle QR-Zuordnungen löschen? Bereits gescannte Missionen bleiben bestehen.")) return;
   localStorage.removeItem(HOST_KEY);
   hostGame = null;
   goHome();
