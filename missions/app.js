@@ -480,6 +480,16 @@ function unlockNextMission() {
   return true;
 }
 
+function queuedReplacementIndex(assignment) {
+  const difficulty = missionById.get(assignment.id)?.difficulty;
+  if (!difficulty) return -1;
+  return (playerState.queuedMissions || []).findIndex(candidate => missionById.get(candidate.id)?.difficulty === difficulty);
+}
+
+function canSwapMission(assignment) {
+  return queuedReplacementIndex(assignment) >= 0 || Boolean(assignment.alternateId);
+}
+
 function renderPlayer() {
   if (!playerState) return;
   if (playerState.finished) {
@@ -555,7 +565,7 @@ function renderPlayer() {
     completeButton.textContent = assignment.completed ? "Doch nicht erledigt" : "Mission erledigt";
     actions.appendChild(completeButton);
 
-    if (!assignment.completed && ((playerState.queuedMissions?.length || 0) > 0 || assignment.alternateId)) {
+    if (!assignment.completed && canSwapMission(assignment)) {
       const swapButton = document.createElement("button");
       swapButton.className = "swap-button";
       swapButton.type = "button";
@@ -577,7 +587,8 @@ function renderPlayer() {
 function swapMission(index) {
   const assignment = playerState.missions[index];
   if (!assignment || assignment.completed) return;
-  const replacement = playerState.queuedMissions?.shift() || (assignment.alternateId ? {
+  const queueIndex = queuedReplacementIndex(assignment);
+  const replacement = queueIndex >= 0 ? playerState.queuedMissions.splice(queueIndex, 1)[0] : (assignment.alternateId ? {
     id: assignment.alternateId,
     targetId: assignment.alternateTargetId,
     targetName: assignment.alternateTargetName
@@ -585,9 +596,10 @@ function swapMission(index) {
   if (!replacement) return;
 
   const cost = nextSwapCost();
+  const difficulty = DIFFICULTY[missionById.get(assignment.id)?.difficulty]?.label || "Gleiche Schwierigkeit";
   const costText = cost ? ` Dieser Tausch kostet ${formatPoints(cost)} Punkte.` : " Dieser Tausch ist gratis.";
-  if (!window.confirm(`Diese Mission wirklich tauschen?${costText}`)) {
-    if (playerState.queuedMissions && !assignment.alternateId) playerState.queuedMissions.unshift(replacement);
+  if (!window.confirm(`${difficulty}-Mission gegen eine neue Mission derselben Stufe tauschen?${costText}`)) {
+    if (queueIndex >= 0) playerState.queuedMissions.splice(queueIndex, 0, replacement);
     return;
   }
 
